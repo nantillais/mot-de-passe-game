@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MOT DE PASSE - Patrick TV</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Roboto, sans-serif; text-align: center; background: #000533; color: white; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 10px; }
+        .plateau { background: linear-gradient(180deg, #0012cc 0%, #000533 100%); padding: 25px; border-radius: 40px; border: 6px solid #ffd700; width: 100%; max-width: 500px; box-shadow: 0 0 30px #ffd70055; position: relative; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .player-name { font-size: 18px; color: #00d4ff; font-weight: bold; }
+        .best-score { font-size: 14px; color: #ffd700; }
+        #mot-secret { font-size: 42px; font-weight: 900; color: #ffd700; background: #000; padding: 20px; border-radius: 15px; margin: 20px 0; border: 3px solid #fff; box-shadow: inset 0 0 10px #ffffff55; text-transform: uppercase; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        #timer { font-size: 90px; font-weight: bold; color: #ff4757; text-shadow: 0 0 15px #ff475755; margin: 10px 0; position: relative; }
+        .progress-bar { width: 100%; height: 8px; background: #000; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #2ed573, #ffd700, #ff4757); transition: width 1s linear; }
+        .score-live { display: flex; justify-content: space-around; margin: 15px 0; font-size: 16px; }
+        .score-item { background: #00000055; padding: 10px 15px; border-radius: 10px; }
+        .score-item span { color: #ffd700; font-weight: bold; font-size: 24px; display: block; }
+        .btn-start { background: #ffd700; color: #000; font-size: 24px; padding: 20px; width: 100%; border-radius: 50px; border: none; font-weight: 900; cursor: pointer; box-shadow: 0 5px 0 #b8860b; transition: transform 0.1s; }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #b8860b; }
+        .btn-start:active { transform: translateY(2px); box-shadow: 0 3px 0 #b8860b; }
+        .btn-action { width: 48%; padding: 20px; font-size: 18px; border-radius: 15px; border: none; font-weight: bold; color: white; cursor: pointer; transition: all 0.2s; }
+        .btn-action:hover { transform: scale(1.05); }
+        .btn-action:active { transform: scale(0.95); }
+        .btn-secondary { background: #4a69bd; padding: 12px 20px; border-radius: 10px; border: none; color: white; font-weight: bold; cursor: pointer; margin: 5px; font-size: 14px; }
+        .btn-share { background: linear-gradient(135deg, #25D366, #128C7E); padding: 15px 25px; border-radius: 12px; border: none; color: white; font-weight: bold; cursor: pointer; margin: 10px 5px; font-size: 16px; display: inline-flex; align-items: center; gap: 8px; transition: transform 0.2s; }
+        .btn-share:hover { transform: scale(1.05); }
+        .btn-share.facebook { background: linear-gradient(135deg, #1877F2, #0d5dbf); }
+        .share-section { margin: 15px 0; padding: 15px; background: #00000055; border-radius: 15px; }
+        .controls-row { display: flex; justify-content: space-between; margin-top: 10px; }
+        .settings { background: #00000055; padding: 15px; border-radius: 15px; margin: 15px 0; }
+        .settings label { display: block; margin: 10px 0; font-size: 14px; }
+        .settings select, .settings input { padding: 8px; border-radius: 8px; border: 2px solid #ffd700; background: #000; color: white; font-size: 14px; width: 100%; }
+        .stats { background: #00000055; padding: 15px; border-radius: 15px; margin: 15px 0; font-size: 14px; }
+        .stats-row { display: flex; justify-content: space-between; margin: 8px 0; }
+        .badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; margin: 5px; }
+        .badge-bronze { background: #cd7f32; }
+        .badge-silver { background: #c0c0c0; color: #000; }
+        .badge-gold { background: #ffd700; color: #000; }
+        .flash-success { animation: flash-green 0.5s; }
+        @keyframes flash-green { 0%, 100% { background: #000; } 50% { background: #2ed57355; } }
+        .pause-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #000000dd; display: flex; align-items: center; justify-content: center; border-radius: 40px; z-index: 10; }
+        .pause-content { font-size: 48px; font-weight: bold; color: #ffd700; }
+        .category-badge { background: #4a69bd; color: white; padding: 5px 15px; border-radius: 20px; font-size: 12px; display: inline-block; margin: 5px 0; }
+        .tab-buttons { display: flex; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 12px; background: #00000055; border: none; color: white; cursor: pointer; font-weight: bold; border-radius: 10px 10px 0 0; }
+        .tab-btn.active { background: #4a69bd; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="plateau">
+    <div class="header">
+        <div class="player-name" id="player-display">PATRICK</div>
+        <div class="best-score">🏆 Record: <span id="best-score">0</span></div>
+    </div>
+
+    <div id="accueil">
+        <div id="timer">30</div>
+        
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('jouer')">JOUER</button>
+            <button class="tab-btn" onclick="switchTab('stats')">STATS</button>
+            <button class="tab-btn" onclick="switchTab('regles')">RÈGLES</button>
+        </div>
+
+        <div id="tab-jouer" class="tab-content active">
+            <div class="settings">
+                <label>👤 Nom du joueur:
+                    <input type="text" id="player-name" value="PATRICK" maxlength="15">
+                </label>
+                <label>⚡ Difficulté:
+                    <select id="difficulty">
+                        <option value="45">Facile (45s)</option>
+                        <option value="30" selected>Normal (30s)</option>
+                        <option value="20">Expert (20s)</option>
+                        <option value="999">Entraînement (∞)</option>
+                    </select>
+                </label>
+                <label>📚 Catégorie:
+                    <select id="category">
+                        <option value="all">Toutes catégories</option>
+                        <option value="animaux">🦁 Animaux</option>
+                        <option value="pays">🌍 Pays</option>
+                        <option value="metiers">💼 Métiers</option>
+                        <option value="sports">⚽ Sports</option>
+                        <option value="aliments">🍕 Aliments</option>
+                        <option value="objets">🎸 Objets</option>
+                    </select>
+                </label>
+            </div>
+            <button class="btn-start" onclick="demarrerPartie()">▶ START</button>
+            
+            <div class="share-section">
+                <p style="font-size: 14px; margin: 10px 0;">📤 Partager ce jeu:</p>
+                <button class="btn-share" onclick="partagerWhatsApp()">
+                    <span style="font-size: 20px;">📱</span> WhatsApp
+                </button>
+                <button class="btn-share facebook" onclick="partagerFacebook()">
+                    <span style="font-size: 20px;">👍</span> Facebook
+                </button>
+                <button class="btn-share" style="background: linear-gradient(135deg, #667eea, #764ba2);" onclick="copierLien()">
+                    <span style="font-size: 20px;">🔗</span> Copier le lien
+                </button>
+            </div>
+        </div>
+
+        <div id="tab-stats" class="tab-content">
+            <div class="stats">
+                <h3 style="color: #ffd700; margin-top: 0;">📊 VOS STATISTIQUES</h3>
+                <div class="stats-row"><span>Parties jouées:</span><span id="stat-games">0</span></div>
+                <div class="stats-row"><span>Score moyen:</span><span id="stat-avg">0</span></div>
+                <div class="stats-row"><span>Meilleur score:</span><span id="stat-best">0</span></div>
+                <div class="stats-row"><span>Total de points:</span><span id="stat-total">0</span></div>
+                <div id="badges-display" style="margin-top: 15px;"></div>
+                <h4 style="color: #00d4ff;">Dernières parties:</h4>
+                <div id="history-display"></div>
+            </div>
+        </div>
+
+        <div id="tab-regles" class="tab-content">
+            <div class="stats" style="text-align: left;">
+                <h3 style="color: #ffd700; margin-top: 0; text-align: center;">📖 RÈGLES DU JEU</h3>
+                <p><strong>Objectif:</strong> Faire deviner un maximum de mots en un temps limité !</p>
+                <p><strong>Comment jouer:</strong></p>
+                <ol style="padding-left: 20px;">
+                    <li>Cliquez sur START pour commencer</li>
+                    <li>Un mot s'affiche à l'écran</li>
+                    <li>Faites deviner ce mot à votre partenaire</li>
+                    <li>Si trouvé → GAGNÉ ✓</li>
+                    <li>Si trop dur → PASSER ✗</li>
+                </ol>
+                <p><strong>Raccourcis clavier:</strong></p>
+                <p>• ESPACE = Gagné<br>• ENTRÉE = Passer<br>• P = Pause</p>
+                <p><strong>Badges:</strong></p>
+                <p>🥉 Bronze: 5+ points<br>🥈 Argent: 10+ points<br>🥇 Or: 15+ points</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="jeu" style="display:none;">
+        <div id="timer">30</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+        
+        <div class="category-badge" id="current-category"></div>
+        
+        <div id="mot-secret">---</div>
+
+        <div class="score-live">
+            <div class="score-item">
+                <span id="score-display">0</span>
+                Trouvés
+            </div>
+            <div class="score-item">
+                <span id="passed-display">0</span>
+                Passés
+            </div>
+        </div>
+
+        <div class="controls-row">
+            <button class="btn-action" style="background:#2ed573;" onclick="motTrouve()">✓ GAGNÉ</button>
+            <button class="btn-action" style="background:#ff4757;" onclick="prochainMot()">✗ PASSER</button>
+        </div>
+        
+        <div style="margin-top: 15px;">
+            <button class="btn-secondary" onclick="togglePause()">⏸ PAUSE</button>
+        </div>
+    </div>
+
+    <div id="pause-overlay" class="pause-overlay" style="display:none;">
+        <div class="pause-content">
+            ⏸ PAUSE<br>
+            <button class="btn-start" style="margin-top: 20px;" onclick="togglePause()">REPRENDRE</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const DICTIONNAIRE = {
+    animaux: ["CHAT", "CHIEN", "LION", "TIGRE", "ÉLÉPHANT", "GIRAFE", "ZÈBRE", "SINGE", "OURS", "LOUP", "RENARD", "AIGLE", "DAUPHIN", "BALEINE", "REQUIN", "TORTUE", "SERPENT", "CROCODILE", "PINGOUIN", "KANGOUROU", "LAPIN", "SOURIS", "VACHE", "COCHON", "MOUTON", "CHEVAL", "ÂNE", "POULE", "CANARD", "HIBOU", "PERROQUET", "FLAMANT", "PANDA", "KOALA", "HIPPOPOTAME", "RHINOCÉROS", "GUÉPARD", "LÉOPARD", "GORILLE", "CHAMEAU", "AUTRUCHE", "PIEUVRE", "MÉDUSE", "HOMARD", "PAPILLON", "ABEILLE", "FOURMI", "ARAIGNÉE", "ESCARGOT", "GRENOUILLE"],
+    pays: ["FRANCE", "ESPAGNE", "ITALIE", "ALLEMAGNE", "JAPON", "CHINE", "BRÉSIL", "CANADA", "AUSTRALIE", "MEXIQUE", "INDE", "RUSSIE", "ÉGYPTE", "MAROC", "GRÈCE", "PORTUGAL", "SUISSE", "BELGIQUE", "NORVÈGE", "SUÈDE", "ANGLETERRE", "IRLANDE", "ÉCOSSE", "POLOGNE", "TURQUIE", "ARGENTINE", "CHILI", "PÉROU", "COLOMBIE", "VENEZUELA", "CUBA", "JAMAÏQUE", "THAÏLANDE", "VIETNAM", "CORÉE", "ISRAËL", "TUNISIE", "ALGÉRIE", "SÉNÉGAL", "KENYA", "NIGERIA", "AUTRICHE", "DANEMARK", "FINLANDE", "ISLANDE", "CROATIE", "HONGRIE", "ROUMANIE", "UKRAINE", "AFRIQUE"],
+    metiers: ["MÉDECIN", "AVOCAT", "PROFESSEUR", "POMPIER", "POLICIER", "CUISINIER", "BOULANGER", "PLOMBIER", "ÉLECTRICIEN", "DENTISTE", "INFIRMIER", "PILOTE", "ARCHITECTE", "MUSICIEN", "ACTEUR", "JOURNALISTE", "PHOTOGRAPHE", "COIFFEUR", "MÉCANICIEN", "AGRICULTEUR", "SERVEUR", "CHAUFFEUR", "FACTEUR", "MENUISIER", "MAÇON", "PEINTRE", "JARDINIER", "BOUCHER", "POISSONNIER", "FLEURISTE", "LIBRAIRE", "BANQUIER", "COMPTABLE", "SECRÉTAIRE", "INGÉNIEUR", "CHERCHEUR", "VÉTÉRINAIRE", "PHARMACIEN", "SAGE-FEMME", "PSYCHOLOGUE", "NOTAIRE", "JUGE", "ARTISTE", "SCULPTEUR", "DANSEUR", "CHANTEUR", "ÉCRIVAIN", "TRADUCTEUR", "DIPLOMATE", "ASTRONAUTE"],
+    sports: ["FOOTBALL", "TENNIS", "BASKETBALL", "NATATION", "CYCLISME", "RUGBY", "BOXE", "JUDO", "SKI", "GOLF", "VOLLEYBALL", "HANDBALL", "ATHLÉTISME", "ESCALADE", "SURF", "DANSE", "ÉQUITATION", "ESCRIME", "HOCKEY", "BASEBALL", "KARATÉ", "TAEKWONDO", "LUTTE", "GYMNASTIQUE", "PLONGEON", "AVIRON", "CANOË", "VOILE", "PÉTANQUE", "BILLARD", "FLÉCHETTES", "BOWLING", "PATINAGE", "CURLING", "BOBSLEIGH", "LUGE", "SNOWBOARD", "PARACHUTE", "DELTAPLANE", "KITESURF", "RAFTING", "SQUASH", "BADMINTON", "PING-PONG", "CRICKET", "POLO", "RODÉO", "COURSE", "MARATHON", "TRIATHLON"],
+    aliments: ["PIZZA", "BURGER", "PÂTES", "SALADE", "SOUPE", "STEAK", "POULET", "POISSON", "RIZ", "PAIN", "FROMAGE", "CHOCOLAT", "GÂTEAU", "GLACE", "FRUIT", "LÉGUME", "CAFÉ", "THÉ", "EAU", "JUS", "POMME", "BANANE", "ORANGE", "FRAISE", "RAISIN", "ANANAS", "MANGUE", "KIWI", "POIRE", "PÊCHE", "CERISE", "CAROTTE", "TOMATE", "CONCOMBRE", "LAITUE", "CHOU", "BROCOLI", "ÉPINARD", "POIREAU", "OIGNON", "AIL", "POMME DE TERRE", "HARICOT", "LENTILLE", "POIS", "MAÏS", "AVOCAT", "NOIX", "AMANDE", "NOISETTE"],
+    objets: ["TÉLÉPHONE", "ORDINATEUR", "VOITURE", "VÉLO", "MONTRE", "LUNETTES", "CHAISE", "TABLE", "LAMPE", "LIVRE", "STYLO", "GUITARE", "PIANO", "BALLON", "VALISE", "SAC", "CLÉS", "MIROIR", "HORLOGE", "CAMÉRA", "TÉLÉVISION", "RADIO", "MICROPHONE", "ENCEINTE", "CASQUE", "ÉCRAN", "CLAVIER", "SOURIS", "IMPRIMANTE", "TABLETTE", "APPAREIL PHOTO", "DRONE", "ROBOT", "ASPIRATEUR", "RÉFRIGÉRATEUR", "FOUR", "MICRO-ONDES", "CAFETIÈRE", "GRILLE-PAIN", "BOUILLOIRE", "MIXEUR", "COUTEAU", "FOURCHETTE", "CUILLÈRE", "ASSIETTE", "VERRE", "TASSE", "BOUTEILLE", "PARAPLUIE", "ÉCHARPE"]
+};
+
+let gameState = {
+    score: 0,
+    passed: 0,
+    temps: 30,
+    maxTemps: 30,
+    intervalle: null,
+    isPaused: false,
+    usedWords: [],
+    stats: JSON.parse(localStorage.getItem('motDePasseStats') || '{"games":0,"total":0,"best":0,"history":[]}')
+};
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function bip(freq, type, duree) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duree);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duree);
+}
+
+function jingleFin() {
+    bip(150, 'square', 0.5);
+    setTimeout(() => bip(100, 'square', 0.8), 200);
+}
+
+function applaudissements() {
+    for(let i = 0; i < 3; i++) {
+        setTimeout(() => bip(800 + Math.random() * 400, 'sine', 0.1), i * 100);
+    }
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-' + tab).classList.add('active');
+}
+
+function updateStats() {
+    document.getElementById('best-score').innerText = gameState.stats.best;
+    document.getElementById('stat-games').innerText = gameState.stats.games;
+    document.getElementById('stat-best').innerText = gameState.stats.best;
+    document.getElementById('stat-total').innerText = gameState.stats.total;
+    document.getElementById('stat-avg').innerText = gameState.stats.games > 0 ? Math.round(gameState.stats.total / gameState.stats.games) : 0;
+    
+    let badgesHTML = '';
+    if (gameState.stats.best >= 15) badgesHTML += '<span class="badge badge-gold">🥇 OR</span>';
+    if (gameState.stats.best >= 10) badgesHTML += '<span class="badge badge-silver">🥈 ARGENT</span>';
+    if (gameState.stats.best >= 5) badgesHTML += '<span class="badge badge-bronze">🥉 BRONZE</span>';
+    document.getElementById('badges-display').innerHTML = badgesHTML || '<em style="color:#888;">Aucun badge pour le moment</em>';
+    
+    let historyHTML = '';
+    gameState.stats.history.slice(-5).reverse().forEach((s, i) => {
+        historyHTML += `<div class="stats-row"><span>Partie ${gameState.stats.history.length - i}</span><span style="color:#ffd700;">${s} pts</span></div>`;
+    });
+    document.getElementById('history-display').innerHTML = historyHTML || '<em style="color:#888;">Aucune partie jouée</em>';
+}
+
+function getMotsList() {
+    const cat = document.getElementById('category').value;
+    if (cat === 'all') {
+        return Object.values(DICTIONNAIRE).flat();
+    }
+    return DICTIONNAIRE[cat];
+}
+
+function demarrerPartie() {
+    const playerName = document.getElementById('player-name').value.trim() || 'JOUEUR';
+    document.getElementById('player-display').innerText = playerName.toUpperCase();
+    
+    gameState.score = 0;
+    gameState.passed = 0;
+    gameState.maxTemps = parseInt(document.getElementById('difficulty').value);
+    gameState.temps = gameState.maxTemps;
+    gameState.usedWords = [];
+    gameState.isPaused = false;
+    
+    const cat = document.getElementById('category').value;
+    const catNames = {all: 'Toutes catégories', animaux: '🦁 Animaux', pays: '🌍 Pays', metiers: '💼 Métiers', sports: '⚽ Sports', aliments: '🍕 Aliments', objets: '🎸 Objets'};
+    document.getElementById('current-category').innerText = catNames[cat];
+    
+    document.getElementById('accueil').style.display = 'none';
+    document.getElementById('jeu').style.display = 'block';
+    document.getElementById('timer').innerText = gameState.temps;
+    document.getElementById('score-display').innerText = 0;
+    document.getElementById('passed-display').innerText = 0;
+    
+    prochainMot();
+    
+    if (gameState.maxTemps < 999) {
+        gameState.intervalle = setInterval(() => {
+            if (!gameState.isPaused) {
+                gameState.temps--;
+                document.getElementById('timer').innerText = gameState.temps;
+                updateProgressBar();
+                if (gameState.temps <= 5 && gameState.temps > 0) bip(440, 'sine', 0.1);
+                if (gameState.temps <= 0) finDePartie();
+            }
+        }, 1000);
+    }
+    updateProgressBar();
+}
+
+function updateProgressBar() {
+    const percent = (gameState.temps / gameState.maxTemps) * 100;
+    document.getElementById('progress').style.width = percent + '%';
+}
+
+function prochainMot() {
+    const mots = getMotsList();
+    const disponibles = mots.filter(m => !gameState.usedWords.includes(m));
+    
+    if (disponibles.length === 0) {
+        gameState.usedWords = [];
+    }
+    
+    const mot = disponibles[Math.floor(Math.random() * disponibles.length)];
+    gameState.usedWords.push(mot);
+    document.getElementById('mot-secret').innerText = mot;
+    
+    if (gameState.score > 0 || gameState.passed > 0) {
+        gameState.passed++;
+        document.getElementById('passed-display').innerText = gameState.passed;
+        bip(200, 'square', 0.15);
+    }
+}
+
+function motTrouve() {
+    gameState.score++;
+    if (gameState.passed > 0) gameState.passed--;
+    document.getElementById('score-display').innerText = gameState.score;
+    document.getElementById('passed-display').innerText = gameState.passed;
+    
+    const motEl = document.getElementById('mot-secret');
+    motEl.classList.add('flash-success');
+    setTimeout(() => motEl.classList.remove('flash-success'), 500);
+    
+    bip(880, 'sine', 0.2);
+    if (gameState.score % 5 === 0) applaudissements();
+    
+    prochainMot();
+}
+
+function togglePause() {
+    gameState.isPaused = !gameState.isPaused;
+    document.getElementById('pause-overlay').style.display = gameState.isPaused ? 'flex' : 'none';
+    bip(600, 'sine', 0.1);
+}
+
+function finDePartie() {
+    clearInterval(gameState.intervalle);
+    jingleFin();
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    
+    gameState.stats.games++;
+    gameState.stats.total += gameState.score;
+    if (gameState.score > gameState.stats.best) {
+        gameState.stats.best = gameState.score;
+        bip(1200, 'sine', 0.5);
+    }
+    gameState.stats.history.push(gameState.score);
+    localStorage.setItem('motDePasseStats', JSON.stringify(gameState.stats));
+    
+    document.getElementById('jeu').style.display = 'none';
+    document.getElementById('accueil').style.display = 'block';
+    
+    updateStats();
+    
+    let badge = '';
+    if (gameState.score >= 15) badge = ' 🥇';
+    else if (gameState.score >= 10) badge = ' 🥈';
+    else if (gameState.score >= 5) badge = ' 🥉';
+    
+    const playerName = document.getElementById('player-name').value.trim() || 'JOUEUR';
+    const msg = `Terminé ! ${playerName}, vous avez marqué ${gameState.score} points !${badge}`;
+    
+    switchTab('stats');
+    
+    const u = new SpeechSynthesisUtterance(msg);
+    u.lang = 'fr-FR';
+    window.speechSynthesis.speak(u);
+
+    if (gameState.score >= 5) {
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
+    if (gameState.score >= 15) {
+        setTimeout(() => confetti({ particleCount: 200, spread: 100, origin: { y: 0.5 } }), 500);
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (document.getElementById('jeu').style.display === 'block' && !gameState.isPaused) {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            motTrouve();
+        } else if (e.code === 'Enter') {
+            e.preventDefault();
+            prochainMot();
+        } else if (e.code === 'KeyP') {
+            e.preventDefault();
+            togglePause();
+        }
+    } else if (gameState.isPaused && e.code === 'KeyP') {
+        e.preventDefault();
+        togglePause();
+    }
+});
+
+updateStats();
+
+function partagerWhatsApp() {
+    const texte = encodeURIComponent(`🎮 Jouez au MOT DE PASSE ! Un super jeu de rapidité créé par Patrick.\n\nMon record: ${gameState.stats.best} points !\n\nEssayez de faire mieux: ${window.location.href}`);
+    window.open(`https://wa.me/?text=${texte}`, '_blank');
+}
+
+function partagerFacebook() {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+}
+
+function copierLien() {
+    const url = window.location.href;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(url).then(() => {
+            alert('✅ Lien copié dans le presse-papier !\n\nVous pouvez maintenant le partager où vous voulez !');
+            bip(800, 'sine', 0.2);
+        });
+    } else {
+        const input = document.createElement('input');
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        alert('✅ Lien copié !');
+        bip(800, 'sine', 0.2);
+    }
+}
+</script>
+</body>
+</html>
